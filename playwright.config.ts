@@ -22,7 +22,7 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : 4,
+  workers: process.env.CI ? 4: 4,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [['html'], ['allure-playwright']],
   timeout: 30000,
@@ -36,7 +36,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     // browserName: 'chromium',
     // channel: 'chrome',
-    headless: false,
+    headless: true,
     testIdAttribute: 'data-qa',
   },
 
