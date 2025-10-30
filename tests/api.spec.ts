@@ -109,10 +109,6 @@ test.describe('API Tests', { tag: '@api' }, () => {
       expect(responseBody).toHaveProperty('products');
       expect(Array.isArray(responseBody.products)).toBeTruthy();
       expect(responseBody.products.length).toBeGreaterThan(0);
-      
-      // Note: The API returns products that may contain the search term in various fields,
-      // not just the product name. So we just verify we got results.
-      console.log(`Search returned ${responseBody.products.length} products`);
     });
   });
 

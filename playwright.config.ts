@@ -20,7 +20,7 @@ export default defineConfig({
   /* Maximum number of test failures before stopping - 0 means run all tests regardless of failures */
   maxFailures: 0,
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 1 : 1,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 4: 4,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
