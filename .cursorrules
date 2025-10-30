@@ -1,0 +1,88 @@
+# Playwright Test Project Rules
+
+## Test Generation
+- Generate Playwright UI and API and Hybrid tests using Playwright MCP
+- Use Playwright MCP tools to run steps one by one
+- Save test files in the tests directory
+- Execute and iterate until tests pass
+
+
+## Page Object Model Guidelines
+
+### General rules
+- Do not use console.log in the test files unless for debug purpose
+- Do not use assertations iin Page Object Classes, only in test files
+
+
+### Base Page
+- Create a universal base page with common methods
+- Avoid abstract methods that force repetitive implementations
+- Include universal navigation methods that work from any page
+- Provide utility methods for common actions (scroll, waitForVisible, waitForHidden...)
+- Do not create methods that will perform only simple action like fill or click
+
+### Page Objects
+- Organize locators in a dedicated section
+- Create constructor method where locators are defined
+- Use descriptive method names with action prefixes (click, get...)
+- Focus on page-specific functionality only
+
+### File Organization
+```
+|-- fixtures/page-fixtures.ts # PageFixtures 
+├── utils/helpers.ts          # Pure utility and api functions
+├── pages/           # Page objects 
+├── test-data/constants.ts       # Test data and constants
+└── tests/*.spec.ts       # Test files
+
+```
+
+### Fixtures
+- Extend test method from @playwright/test with PageFixtures to setup all the page objects
+- In the test use only fixtures that are needed for that speciffic test
+
+### Test Steps
+- Use test.step() in the Page Object Classes or in the helpers methods for the methods that have more than one action and make sense (like login method...)
+- Do not use test.step() in spec.ts files
+
+### 
+
+## Locator Best Practices
+
+### Preferred Locators (in order of preference)
+1. `getByTestId()` - if applicable
+2. `getByRole()` - Most reliable and accessible
+3. `getByText()` - For unique text content
+4. Semantic selectors with `:has-text()`
+5. Data attributes when available
+
+### Avoid
+- nth-child() selectors
+- Complex CSS paths
+- Generic tag selectors without context
+- Positional selectors that break easily
+
+### Make Locators Unique
+- Combine multiple identifiers when needed
+- Use context to narrow down selections
+- Prefer robust selectors over brittle ones
+
+## Test Structure
+- Use constants for test data instead of hardcoding
+- Create readable test names that describe the scenario
+- Use fixtures for clean page object instantiation
+- Group related tests in describe blocks
+- Create independet tests, able to run in parallel mode
+- Use BeforeEach() and AfterEach() hooks to setup environment for every test
+
+## Reporting
+- Use Allure reporting
+
+## Running
+- Add test scripts in package.json
+
+## Code Quality
+- Use TypeScript for type safety
+- Handle errors gracefully with meaningful messages
+- Keep methods focused on single responsibilities
+- Use consistent naming conventions

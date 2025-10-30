@@ -1,0 +1,26 @@
+{
+  "name": "playwrightpracticeproject",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test:clean": "rm -rf allure-results && rm -rf allure-report",
+    "test:allure": "npm run test:clean && playwright test && allure generate allure-results --clean -o allure-report && allure open allure-report",
+    "test:allure:checkout": "npm run test:clean && playwright test --grep @hybrid-checkout && allure generate allure-results --clean -o allure-report && allure open allure-report",
+    "test:allure:login": "npm run test:clean && playwright test --grep @login && allure generate allure-results --clean -o allure-report && allure open allure-report",
+    "test:allure:signup": "npm run test:clean && playwright test --grep @signup && allure generate allure-results --clean -o allure-report && allure open allure-report",
+    "test:allure:hybrid-cart": "npm run test:clean && playwright test --grep @hybrid-cart && allure generate allure-results --clean -o allure-report && allure open allure-report",
+    "test:allure:cart": "npm run test:clean && playwright test --grep @cart && allure generate allure-results --clean -o allure-report && allure open allure-report"
+
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@faker-js/faker": "^10.0.0",
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^24.5.2",
+    "allure-commandline": "^2.34.1",
+    "allure-playwright": "^3.4.1"
+  }
+}
