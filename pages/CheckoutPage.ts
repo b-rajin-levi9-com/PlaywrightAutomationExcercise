@@ -27,13 +27,6 @@ export default class CheckoutPage extends BasePage {
         });
     }
 
-    async getAddressDetails() {
-        await test.step('Verify Address Details', async () => {
-            await expect(this.addressDeliverySection).toBeVisible();
-            await expect(this.addressBillingSection).toBeVisible();
-        });
-    }
-
     async getReviewOrder() {
         await this.waitForVisible(this.reviewOrderSection);
         return await this.reviewOrderSection;

@@ -33,6 +33,7 @@ export default class HomePage extends BasePage {
   async getHomePageTitle() {
     return await this.page.title();
   }
+  
   async getLoggedInUserName(name: string) {
     return this.page.getByText(`Logged in as ${name}`);
   }
@@ -43,6 +44,7 @@ export default class HomePage extends BasePage {
       await this.productsLink.click();
     });
   }
+
   async waitForCartLink() {
     await this.waitForVisible(this.cartLink);
   }
@@ -74,9 +76,11 @@ export default class HomePage extends BasePage {
   async waitForLogoutLink() {
     await this.waitForVisible(this.logoutLink);
   }
+
   async waitForDeleteAccountLink() {
     await this.waitForVisible(this.deleteAccountLink);
   }
+
   async waitForSignupLoginLink() {
     await this.waitForVisible(this.signupLoginLink);
   }

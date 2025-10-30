@@ -6,10 +6,10 @@ export default class BasePage {
   constructor(page: Page) {
     this.page = page;
   }
-  async navigateTo(url: string) {
+
+async navigateTo(url: string) {
     await this.page.goto(url);
   }
-
 
 async waitForVisible(locator: Locator) {
     await locator.waitFor({ state: 'visible' });
@@ -17,7 +17,6 @@ async waitForVisible(locator: Locator) {
 async waitForHidden(locator: Locator) {
     await locator.waitFor({ state: 'hidden' });
 }
-
 
 async scrollIntoView(locator: Locator) {
   await locator.scrollIntoViewIfNeeded();

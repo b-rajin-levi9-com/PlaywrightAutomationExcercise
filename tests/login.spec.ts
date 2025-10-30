@@ -13,7 +13,6 @@ test.describe('Verify login functionality',{ tag: '@login'}, () => {
     await expect(loginSignUpPage.loginErrorMessage).toBeVisible();
   });
 
-
   test('Verify login with invalid password', async ({loginSignUpPage}) => {
     await loginSignUpPage.login(USER.emailValid, USER.passwordInvalid);
     await loginSignUpPage.waitForLoginErrorMessage();
@@ -27,6 +26,7 @@ test.describe('Verify login functionality',{ tag: '@login'}, () => {
     await homePage.waitForDeleteAccountLink();
     await expect(homePage.deleteAccountLink).toBeVisible();
   });
+  
   test('Verify logout', async ({ homePage, loginSignUpPage }) => {
     await loginSignUpPage.login(USER.emailExisting, USER.passwordValid);
     await homePage.logout();

@@ -93,7 +93,6 @@ test.describe('Hybrid API + UI Cart Tests', { tag: '@hybrid-cart' }, () => {
     const secondPriceInCart = await cartPage.getProductPrice(secondProduct.name);
     expect(secondPriceInCart?.trim()).toBe(secondProduct.price);
 
-
   });
 
   test('Hybrid: Verify deleting products from cart', async ({ homePage, productsPage, productDetailPage, cartPage }) => {

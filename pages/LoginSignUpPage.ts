@@ -146,11 +146,11 @@ export default class LoginSignUpPage extends BasePage {
         await this.selectRadio(genderRadio);
     }
 
-
     async getGender(gender: string) {
         const genderRadio = this.page.getByLabel(gender);
         return genderRadio;
     }
+
     async fillDateOfBirth(day: string, month: string, year: string) {
         await test.step(`Fill date of birth with "${day}" and "${month}" and "${year}"`, async () => {
         await this.dateOfBirthDayInput.selectOption(day);
@@ -158,11 +158,11 @@ export default class LoginSignUpPage extends BasePage {
         await this.dateOfBirthYearInput.selectOption(year);
         });
     }
+
     async fillCountry(country: string) {
         await this.countryInput.selectOption(country);
     }
    
-
     async login(email: string, password: string) {    
         await test.step(`Login with "${email}" and "${password}" credentials`, async () => {
             await this.fillLoginEmail(email);
@@ -179,24 +179,8 @@ export default class LoginSignUpPage extends BasePage {
             await this.clickSignUpButton();
         });
     }
-    async fullSignUp( gender: string, password: string, day: string, month: string, year: string, country: string, firstName: string, lastName: string, company: string, address: string, address2: string, state: string, city: string, zipcode: string, mobileNumber: string) {
-        await test.step('Complete full sign up form', async () => {
-            await this.selectGender(gender);
-            await this.fillSignUpPassword(password);
-            await this.fillDateOfBirth(day, month, year);
-            await this.fillFirstName(firstName);
-            await this.fillLastName(lastName);
-            await this.fillCompany(company);
-            await this.fillAddress(address);
-            await this.fillAddress2(address2);
-            await this.fillCountry(country);
-            await this.fillState(state);
-            await this.fillCity(city);
-            await this.fillZipcode(zipcode);
-            await this.fillMobileNumber(mobileNumber);
-            await this.clickCreateAccountButton();
-        });
-    }
+
+
 
     async fullSignUpWithUser() {
         await test.step('Complete full sign up form', async () => {

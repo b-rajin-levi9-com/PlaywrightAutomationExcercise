@@ -15,6 +15,7 @@ export default class CartPage extends BasePage {
 
 
     }
+    
     async getProductInCart(productName: string)  {
         const product = this.cartTable.getByText(productName, { exact: true });
         return product;

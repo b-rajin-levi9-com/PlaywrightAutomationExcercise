@@ -6,10 +6,13 @@ let name = USER.name;
     await homePage.navigateToHomePage();
     await homePage.clickSignupLoginLink();
   });
+
   test('Verify sign up with existing email', async ({  loginSignUpPage, homePage }) => {
+
     await loginSignUpPage.signUp(USER.name, USER.emailExisting);
     await loginSignUpPage.waitForSignUpErrorMessage();
     await expect(loginSignUpPage.signUpErrorMessage).toBeVisible();
+    
   });
 
   test('Verify sign up with valid credentials', async ({ loginSignUpPage, homePage }) => {

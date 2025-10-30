@@ -16,6 +16,7 @@ export default class ProductsPage extends BasePage {
   async waitForHeadingAllProducts() {
     await this.waitForVisible(this.headingAllProducts);
   }
+  
   async getProductsPageTitle() {
     return await this.page.title();
   }

@@ -126,11 +126,7 @@ test.describe('Hybrid Checkout Tests', { tag: '@hybrid-checkout' }, () => {
     await homePage.clickSignupLoginLink();
 
     // Fill all details in Signup and create account
-
-
-
     await loginSignUpPage.fullSignUpWithUser();
-
 
     // Verify 'ACCOUNT CREATED!' and click 'Continue' button
     await loginSignUpPage.waitForAccountCreatedMessage();
@@ -138,7 +134,6 @@ test.describe('Hybrid Checkout Tests', { tag: '@hybrid-checkout' }, () => {
 
     // Verify 'Logged in as username' at top
     await homePage.waitForLoggedInUserName(USER.name);
-
 
     // Add products to cart
     await homePage.clickProductsLink();

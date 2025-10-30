@@ -9,13 +9,10 @@ test.describe('Verify cart functionality',{ tag: '@cart'}, () => {
 
     await homePage.navigateToHomePage();
     await homePage.clickSignupLoginLink();
-    await loginSignUpPage.signUp(USER.name, USER.emailValid);
-    await loginSignUpPage.waitForSignUpHeading();
-    await loginSignUpPage.fullSignUp(GENDER.male, USER.passwordValid, USER.dateOfBirth.day, USER.dateOfBirth.month, USER.dateOfBirth.year, USER.country, USER.name, USER.lastName, USER.company, USER.address, USER.address2, USER.state, USER.city, USER.zipcode, USER.mobileNumber);
+    await loginSignUpPage.fullSignUpWithUser();
     await loginSignUpPage.clickContinueButton();
     await homePage.waitForLogoutLink();
   });
-
 
   test('Verify adding single product to cart', async ({ page, productsPage, productDetailPage, homePage, cartPage}) => {
 
@@ -25,15 +22,9 @@ test.describe('Verify cart functionality',{ tag: '@cart'}, () => {
     await productDetailPage.clickContinueShopping();
     await homePage.clickCartLink();
     await expect(await cartPage.getProductInCart(PRODUCTS.sleevelessDress.name)).toBeVisible();
-    await cartPage.clickProceedToCheckoutBtn();
-
-
-
-
-
   });
-  test('Verify adding multiple products to cart', async ({ productsPage, productDetailPage, homePage, cartPage}) => {
 
+  test('Verify adding multiple products to cart', async ({ productsPage, productDetailPage, homePage, cartPage}) => {
 
     await homePage.clickProductsLink();
     await productsPage.clickViewProduct(PRODUCTS.fancyGreenTop.name);     
@@ -46,7 +37,6 @@ test.describe('Verify cart functionality',{ tag: '@cart'}, () => {
     await homePage.clickCartLink();
     await expect(await cartPage.getProductInCart(PRODUCTS.fancyGreenTop.name)).toBeVisible();
     await expect(await cartPage.getProductInCart(PRODUCTS.sleevelessDress.name)).toBeVisible();
-
   });
 
   test('Verify deleting product from cart', async ({ productsPage, productDetailPage, homePage, cartPage, page}) => {

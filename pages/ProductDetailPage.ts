@@ -15,17 +15,13 @@ export default class ProductDetailPage extends BasePage {
         this.continueShoppingButton = page.getByRole('button', { name: /Continue Shopping/i });
     }
 
-
     async getProductDetailPageTitle() {
         return await this.page.title();
     }
 
-
     async addToCart() {
         await this.addToCartButton.click();
     }
-
-
 
     async clickContinueShopping() {
         await test.step('Click Continue Shopping', async () => {

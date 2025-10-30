@@ -44,8 +44,6 @@ export default class PaymentPage extends BasePage {
         });
     }
 
-
-
     async getSuccessMessageText(): Promise<string | null> {
         await this.waitForVisible(this.successMessage);
         return await this.successMessage.textContent();

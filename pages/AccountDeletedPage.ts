@@ -17,8 +17,6 @@ export default class AccountDeletedPage extends BasePage {
         return await this.accountDeletedHeading;
     }
 
-
-
     async clickContinue() {
         await test.step('Click Continue button', async () => {
             await this.waitForVisible(this.continueButton);
