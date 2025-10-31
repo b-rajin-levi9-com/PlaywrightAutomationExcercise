@@ -30,7 +30,8 @@ export default defineConfig({
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: 'https://www.automationexercise.com/',
-    video: process.env.CI ? 'retain-on-failure' : 'on',  // Only keep videos of failed tests in CI
+    /* Do not record videos in CI */
+    video: process.env.CI ? 'off' : 'on',
     /* Only keep traces of failed tests in CI  */
     trace: process.env.CI ? 'retain-on-failure' : 'on',  // CI: only retries, Local: all tests
     screenshot: 'only-on-failure',
