@@ -17,7 +17,7 @@ export default class HomePage extends BasePage {
     super(page);
     this.tittle = page.getByTitle(TITTLE.home);
     this.homeLink = page.getByRole('link', { name: 'Home'});
-    this.productsLink = page.getByRole('link', { name: 'Products'});
+    this.productsLink = page.locator('a[href="/products"]').first();
     this.cartLink = page.getByRole('link', { name: 'Cart'});
     this.signupLoginLink = page.getByRole('link', { name: 'Signup / Login'});
     this.logoutLink = page.getByRole('link', { name: 'Logout'});
