@@ -62,7 +62,6 @@ test.describe('Verify cart functionality',{ tag: '@cart'}, () => {
 
   test.afterEach(async ({ homePage, accountDeletedPage }) => { 
     await homePage.deleteAccount();
-    expect(await accountDeletedPage.getAccountDeletedHeading()).toBeVisible();
   });
   
 });

@@ -34,7 +34,7 @@ jobs:
         if [ -n "${{ github.event.inputs.test_grep }}" ]; then
           npx playwright test --grep "${{ github.event.inputs.test_grep }}"
         else
-          npx playwright test --grep "Verify deleting product from cart" 
+          npx playwright test 
         fi
     - name: Generate Allure Report
       if: always()  # Run even if tests fail
