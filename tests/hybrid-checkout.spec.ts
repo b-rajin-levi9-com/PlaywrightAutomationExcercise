@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/page-fixtures';
-import { USER, GENDER, PAYMENT, CHECKOUT, MESSAGE } from '../test-data/constants';
+import { USER,CHECKOUT, MESSAGE } from '../test-data/constants';
 import { getAllProductsViaAPI, generateUniqueEmail, deleteAccountViaAPI } from '../utils/helpers';
 
 /**
@@ -72,11 +72,7 @@ test.describe('Hybrid Checkout Tests', { tag: '@hybrid-checkout' }, () => {
     await checkoutPage.clickRegisterLogin();
 
     // Fill all details in Signup and create account
-
-
-
     await loginSignUpPage.fullSignUpWithUser();
-
 
     // Verify 'ACCOUNT CREATED!' and click 'Continue' button
     await loginSignUpPage.waitForAccountCreatedMessage();
@@ -90,7 +86,6 @@ test.describe('Hybrid Checkout Tests', { tag: '@hybrid-checkout' }, () => {
 
     // Click 'Proceed To Checkout' button
     await cartPage.clickProceedToCheckoutBtn();
-
 
     // Verify delivery address contains the user details
     const deliveryAddress = await checkoutPage.getDeliveryAddress();

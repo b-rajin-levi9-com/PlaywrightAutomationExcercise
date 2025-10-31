@@ -30,13 +30,13 @@ export default defineConfig({
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: 'https://www.automationexercise.com/',
-    video: 'on',
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on',
+    video: process.env.CI ? 'retain-on-failure' : 'on',  // Only keep videos of failed tests in CI
+    /* Only keep traces of failed tests in CI  */
+    trace: process.env.CI ? 'retain-on-failure' : 'on',  // CI: only retries, Local: all tests
     screenshot: 'only-on-failure',
     // browserName: 'chromium',
     // channel: 'chrome',
-    headless: true,
+    headless: process.env.CI ? true : false, // true for CI, false for local development
     testIdAttribute: 'data-qa',
   },
 

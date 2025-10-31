@@ -1,6 +1,6 @@
 import { test, expect } from '../fixtures/page-fixtures';
 
-import { PRODUCTS, USER, GENDER } from '../test-data/constants';
+import { PRODUCTS} from '../test-data/constants';
 
 test.describe('Verify cart functionality',{ tag: '@cart'}, () => {
 
@@ -14,7 +14,7 @@ test.describe('Verify cart functionality',{ tag: '@cart'}, () => {
     await homePage.waitForLogoutLink();
   });
 
-  test('Verify adding single product to cart', async ({ page, productsPage, productDetailPage, homePage, cartPage}) => {
+  test('Verify adding single product to cart', async ({ productsPage, productDetailPage, homePage, cartPage}) => {
 
     await homePage.clickProductsLink();
     await productsPage.clickViewProduct(PRODUCTS.sleevelessDress.name); 
@@ -39,7 +39,7 @@ test.describe('Verify cart functionality',{ tag: '@cart'}, () => {
     await expect(await cartPage.getProductInCart(PRODUCTS.sleevelessDress.name)).toBeVisible();
   });
 
-  test('Verify deleting product from cart', async ({ productsPage, productDetailPage, homePage, cartPage, page}) => {
+  test('Verify deleting product from cart', async ({productsPage, productDetailPage, homePage, cartPage}) => {
 
     await homePage.clickProductsLink();
     await productsPage.clickViewProduct(PRODUCTS.fancyGreenTop.name);    

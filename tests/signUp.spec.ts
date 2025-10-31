@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/page-fixtures';
-import { USER, GENDER } from '../test-data/constants';
+import { USER} from '../test-data/constants';
 test.describe('Verify sign up functionality',{ tag: '@signup'}, () => {
 let name = USER.name;
   test.beforeEach(async ({ homePage }) => {

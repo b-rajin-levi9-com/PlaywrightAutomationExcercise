@@ -78,7 +78,6 @@ test.describe('API Tests', { tag: '@api' }, () => {
       expect(firstProduct).toHaveProperty('brand');
       expect(firstProduct).toHaveProperty('category');
       
-
     });
 
     test('Verify POST method is not supported for Products List API', async ({ request }) => {
