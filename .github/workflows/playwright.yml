@@ -4,6 +4,13 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:  # Allows manual trigger with inputs
+    inputs:
+      test_grep:
+        description: 'Run specific tests (e.g., @login, @cart, @hybrid-checkout)'
+        required: false
+        type: string
+
 jobs:
   test:
     timeout-minutes: 60
@@ -18,10 +25,32 @@ jobs:
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
     - name: Run Playwright tests
-      run: npx playwright test
+      run: |
+        if [ -n "${{ github.event.inputs.test_grep }}" ]; then
+          npx playwright test --grep "${{ github.event.inputs.test_grep }}"
+        else
+          npx playwright test
+        fi
+    - name: Generate Allure Report
+      if: always()  # Run even if tests fail
+      run: |
+        npm install -g allure-commandline
+        allure generate allure-results --clean -o allure-report
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
         name: playwright-report
         path: playwright-report/
+        retention-days: 30
+    - uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: allure-report
+        path: allure-report/
+        retention-days: 30
+    - uses: actions/upload-artifact@v4
+      if: always()  # Always upload test results even on failure
+      with:
+        name: allure-results
+        path: allure-results/
         retention-days: 30
