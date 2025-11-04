@@ -52,7 +52,7 @@ jobs:
             npx playwright test
           fi
 
-      # 1) Preuzmi istoriju sa GitHub Pages (samo za main/master)
+      # 1) Download previous Allure history from GitHub Pages
       - name: Download previous Allure history (for trends)
         if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         continue-on-error: true
@@ -61,27 +61,66 @@ jobs:
           REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
           PAGES_URL="https://${{ github.repository_owner }}.github.io/${REPO_NAME}"
           echo "Fetching history from: $PAGES_URL/history/"
+          
+          # Download all history JSON files
           for f in history.json history-trend.json duration-trend.json categories-trend.json retry-trend.json; do
-            curl -f -s -L "${PAGES_URL}/history/$f" -o "/tmp/allure-history/$f" || echo "Missing $f - ok"
+            curl -f -s -L "${PAGES_URL}/history/$f" -o "/tmp/allure-history/$f" || echo "Missing $f - ok for first run"
           done
+          
+          echo "Downloaded history files:"
           ls -la /tmp/allure-history || true
 
-      # 2) Ubaci istoriju u allure-results/history PRE generisanja
-      - name: Inject previous history into allure-results
-        if: always()
-        run: |
-          mkdir -p allure-results/history
-          cp /tmp/allure-history/*.json allure-results/history/ 2>/dev/null || true
-          echo "Current allure-results/history:"
-          ls -la allure-results/history || true
-
-      # 3) Generiši Allure report
+      # 2) Generate Allure report first
       - name: Generate Allure Report
         if: always()
         run: |
           npm install -g allure-commandline
+          # Generate fresh report
           allure generate allure-results --clean -o allure-report
           echo "Allure report generated at ./allure-report"
+
+      # 3) Merge previous history into generated report
+      - name: Merge previous history into report
+        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        continue-on-error: true
+        run: |
+          if [ -f "/tmp/allure-history/history.json" ]; then
+            echo "Merging previous history into report..."
+            
+            # Copy history files into the generated report's history folder
+            mkdir -p allure-report/history
+            cp /tmp/allure-history/*.json allure-report/history/ 2>/dev/null || true
+            
+            echo "History files copied. Contents of allure-report/history/:"
+            ls -la allure-report/history/ || true
+            
+            # Regenerate report to merge history with new results
+            # We need to temporarily move the report, keep history, then regenerate
+            echo "Regenerating report to merge history..."
+            
+            # Save history temporarily
+            if [ -d "allure-report/history" ]; then
+              cp -r allure-report/history /tmp/allure-history-preserve || true
+            fi
+            
+            # Remove report directory but keep results
+            rm -rf allure-report
+            
+            # Regenerate without --clean so Allure can merge history
+            # But first, place history in the output location
+            mkdir -p allure-report/history
+            if [ -d "/tmp/allure-history-preserve" ]; then
+              cp /tmp/allure-history-preserve/*.json allure-report/history/ 2>/dev/null || true
+            fi
+            
+            # Now generate - Allure will see existing history and merge it
+            allure generate allure-results -o allure-report
+            
+            echo "History merged successfully. Final history contents:"
+            ls -la allure-report/history/ || true
+          else
+            echo "No previous history found - this is the first run or history download failed"
+          fi
 
       # (Opcionalno) Prikači artefakte za debug i lokalni download
       - name: Upload Playwright HTML report
@@ -108,7 +147,7 @@ jobs:
           path: allure-results/
           retention-days: 30
 
-      # 4) Deploy na GitHub Pages (samo za main/master)
+      # 4) Deploy to GitHub Pages
       - name: Setup Pages
         if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         uses: actions/configure-pages@v4
