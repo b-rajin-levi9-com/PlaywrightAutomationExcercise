@@ -55,6 +55,10 @@ jobs:
         # Verify if we got any history files
         if [ -f "/tmp/allure-history/history.json" ]; then
           echo "Previous history downloaded successfully"
+          # Copy history to allure-report/history BEFORE generation so Allure can merge it
+          mkdir -p allure-report/history
+          cp -r /tmp/allure-history/* allure-report/history/ || true
+          echo "History placed in allure-report/history for merging"
         else
           echo "No previous history found - this appears to be the first run"
         fi
@@ -62,21 +66,18 @@ jobs:
       if: always()  # Run even if tests fail
       run: |
         npm install -g allure-commandline
-        # Generate report with --clean to create fresh directory
-        allure generate allure-results --clean -o allure-report
-    - name: Restore Allure history (for trends)
-      if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-      continue-on-error: true
-      run: |
-        # Copy downloaded history back into the generated report
-        if [ -f "/tmp/allure-history/history.json" ]; then
-          mkdir -p allure-report/history
-          cp -r /tmp/allure-history/* allure-report/history/ || true
-          echo "History restored successfully"
-          # Regenerate report to merge history with new results
+        # Generate report - if history exists in allure-report/history, Allure will merge it automatically
+        # Remove allure-report directory if it exists but has no valid report
+        if [ -d "allure-report" ] && [ ! -f "allure-report/index.html" ]; then
+          rm -rf allure-report
+        fi
+        # Generate without --clean to preserve history if it exists
+        if [ -d "allure-report" ] && [ -d "allure-report/history" ]; then
+          echo "Generating report with existing history (will merge)"
           allure generate allure-results -o allure-report
         else
-          echo "No previous history to restore"
+          echo "Generating fresh report (no history to merge)"
+          allure generate allure-results --clean -o allure-report
         fi
     - name: Setup Pages
       if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
