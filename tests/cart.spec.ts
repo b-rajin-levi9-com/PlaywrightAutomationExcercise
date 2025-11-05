@@ -14,7 +14,7 @@ test.describe('Verify cart functionality',{ tag: '@cart'}, () => {
     await homePage.waitForLogoutLink();
   });
 
-  test('Verify adding single product to cart', async ({ productsPage, productDetailPage, homePage, cartPage}) => {
+  test('Verify adding single product to cart @smoke', async ({ productsPage, productDetailPage, homePage, cartPage}) => {
 
     await homePage.clickProductsLink();
     await productsPage.clickViewProduct(PRODUCTS.sleevelessDress.name); 

@@ -19,7 +19,7 @@ test.describe('Verify login functionality',{ tag: '@login'}, () => {
     await expect(loginSignUpPage.loginErrorMessage).toBeVisible();
   });
 
-  test('Verify login with valid credentials', async ({loginSignUpPage, homePage }) => {
+  test('Verify login with valid credentials @smoke', async ({loginSignUpPage, homePage }) => {
     await loginSignUpPage.login(USER.emailExisting, USER.passwordValid);
     await homePage.waitForLogoutLink();
     await expect(homePage.logoutLink).toBeVisible();

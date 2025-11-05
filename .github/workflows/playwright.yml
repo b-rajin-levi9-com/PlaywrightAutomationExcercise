@@ -1,60 +1,167 @@
 name: Playwright Tests
 
 on:
+  # Trigger on push to feature branches and main
   push:
-    branches: [ main, master ]
+    branches: 
+      - 'main'
+      - 'feature/**'
+      - 'bugfix/**'
+      - 'fix/**'
+  
+  # Full tests on PR
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
+  
+  # Manual trigger
   workflow_dispatch:
     inputs:
       test_grep:
-        description: 'Run specific tests (e.g., @login, @cart, @hybrid-checkout)'
+        description: 'Run specific tests (e.g., @smoke, @login, @cart)'
         required: false
         type: string
 
-# Neophodne dozvole za Pages deploy i pisanje artefakata
 permissions:
   contents: write
   pages: write
   id-token: write
+  pull-requests: write
 
-# Izbegni paralelne deploye na Pages
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
+  # Job 1: Smoke tests for feature branches (fast feedback)
+  smoke-tests:
+    if: github.event_name == 'push' && !contains(github.ref, 'main')
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-
+    timeout-minutes: 15
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+      
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-
+      
       - name: Install dependencies
         run: npm ci
+      
+      - name: Install Playwright Browsers (Chromium only)
+        run: npx playwright install --with-deps chromium
+      
+      - name: Run Smoke Tests
+        run: npx playwright test --grep @smoke --project=chromium
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-results-${{ github.sha }}
+          path: playwright-report/
+          retention-days: 7
 
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
-
-      - name: Run Playwright tests
+  # Job 2: Full tests for Pull Requests (quality gate - Chromium only)
+  pr-tests:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright Browsers (Chromium only)
+        run: npx playwright install --with-deps chromium
+      
+      - name: Run Full Test Suite (Chromium only)
+        run: npx playwright test --project=chromium
+      
+      - name: Generate Allure Report
+        if: always()
+        env:
+          ALLURE_RESULTS_LIMIT: 10
         run: |
-          if [ -n "${{ github.event.inputs.test_grep }}" ]; then
-            echo "Running tests with grep: ${{ github.event.inputs.test_grep }}"
-            npx playwright test --grep "${{ github.event.inputs.test_grep }}"
-          else
-            npx playwright test
-          fi
+          npm install -g allure-commandline
+          allure generate allure-results --clean -o allure-report
+      
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-pr-${{ github.event.pull_request.number }}
+          path: playwright-report/
+          retention-days: 14
+      
+      - name: Upload Allure Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-pr-${{ github.event.pull_request.number }}
+          path: allure-report/
+          retention-days: 14
+      
+      - name: Comment PR with test results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const testResults = '${{ job.status }}';
+            const runUrl = `https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+            const body = `## 🎭 Playwright Test Results\n\n` +
+              `**Status:** ${testResults === 'success' ? '✅ All tests passed' : '❌ Tests failed'}\n` +
+              `**Browser:** Chromium only\n` +
+              `**Note:** Full cross-browser testing will run after merge to main\n\n` +
+              `📊 [View Test Reports](${runUrl})`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
 
-      # 1) Download previous Allure history from GitHub Pages
+  # Job 3: Full tests on all browsers + deploy for main branch (official results with trends)
+  main-tests-and-deploy:
+    if: github.event_name == 'push' && contains(github.ref, 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright Browsers (All browsers)
+        run: npx playwright install --with-deps
+      
+      - name: Run Full Test Suite (All browsers)
+        run: npx playwright test
+      
       - name: Download previous Allure history (for trends)
-        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        if: always()
         continue-on-error: true
         run: |
           mkdir -p allure-results/history
@@ -62,62 +169,111 @@ jobs:
           PAGES_URL="https://${{ github.repository_owner }}.github.io/${REPO_NAME}"
           echo "Fetching history from: $PAGES_URL/history/"
           
-          # Download all history JSON files directly into allure-results/history
           for f in history.json history-trend.json duration-trend.json categories-trend.json retry-trend.json; do
             curl -f -s -L "${PAGES_URL}/history/$f" -o "allure-results/history/$f" || echo "Missing $f - ok for first run"
           done
           
-          echo "History files in allure-results/history/:"
+          echo "History files downloaded:"
           ls -la allure-results/history/ || true
-
-      # 2) Generate Allure report - it will automatically merge history from allure-results/history/
+      
       - name: Generate Allure Report
         if: always()
+        env:
+          ALLURE_RESULTS_LIMIT: 10
         run: |
           npm install -g allure-commandline
-          # Generate report - Allure will automatically merge history if present in allure-results/history/
           allure generate allure-results --clean -o allure-report
-          echo "Allure report generated at ./allure-report"
-          echo "Final history in generated report:"
-          ls -la allure-report/history/ || true
-
-      # (Opcionalno) Prikači artefakte za debug i lokalni download
-      - name: Upload Playwright HTML report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 30
-
-      - name: Upload Allure report (static site)
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-report
-          path: allure-report/
-          retention-days: 30
-
-      - name: Upload Allure results (raw)
+          echo "Allure report generated with history"
+      
+      - name: Upload Playwright Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: allure-results
+          name: playwright-report-main
+          path: playwright-report/
+          retention-days: 30
+      
+      - name: Upload Allure Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-main
+          path: allure-report/
+          retention-days: 30
+      
+      - name: Upload Allure Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-main
           path: allure-results/
           retention-days: 30
-
-      # 3) Deploy to GitHub Pages
+      
       - name: Setup Pages
-        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        if: always()
         uses: actions/configure-pages@v4
-
-      - name: Upload Pages artifact (Allure site)
-        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      
+      - name: Upload Pages artifact
+        if: always()
         uses: actions/upload-pages-artifact@v3
         with:
           path: allure-report
-
+      
       - name: Deploy to GitHub Pages
-        if: always() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        if: always()
         id: deployment
         uses: actions/deploy-pages@v4
+
+  # Job 4: Manual test execution with custom filters
+  manual-tests:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      
+      - name: Run Tests with Filter
+        run: |
+          if [ -n "${{ github.event.inputs.test_grep }}" ]; then
+            echo "Running tests with grep: ${{ github.event.inputs.test_grep }}"
+            npx playwright test --grep "${{ github.event.inputs.test_grep }}"
+          else
+            npx playwright test
+          fi
+      
+      - name: Generate Allure Report
+        if: always()
+        env:
+          ALLURE_RESULTS_LIMIT: 10
+        run: |
+          npm install -g allure-commandline
+          allure generate allure-results --clean -o allure-report
+      
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-manual-${{ github.run_id }}
+          path: playwright-report/
+          retention-days: 14
+      
+      - name: Upload Allure Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-manual-${{ github.run_id }}
+          path: allure-report/
+          retention-days: 14

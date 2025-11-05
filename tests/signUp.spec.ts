@@ -15,7 +15,7 @@ let name = USER.name;
     
   });
 
-  test('Verify sign up with valid credentials', async ({ loginSignUpPage, homePage }) => {
+  test('Verify sign up with valid credentials @smoke', async ({ loginSignUpPage, homePage }) => {
 
     await loginSignUpPage.fullSignUpWithUser();
     await loginSignUpPage.waitForAccountCreatedMessage();
