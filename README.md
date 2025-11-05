@@ -1,0 +1,251 @@
+# Playwright Practice Project
+
+A comprehensive end-to-end testing project using Playwright with TypeScript, implementing the Page Object Model pattern and Allure reporting.
+
+## 🧪 Testing Strategy
+
+This project uses a **tiered testing strategy** to optimize CI/CD performance and provide fast feedback:
+
+### Test Execution Matrix
+
+| Stage | Trigger | Tests | Browser(s) | Duration | Report |
+|-------|---------|-------|-----------|----------|--------|
+| **Smoke Tests** | Push to `feature/*`, `bugfix/*`, `fix/*` | @smoke tagged tests only | Chromium | ~5 mins | Artifact |
+| **PR Tests** | Pull Request to `main` | All tests | Chromium only | ~15 mins | Artifact + PR comment |
+| **Main Tests** | Push/Merge to `main` | All tests | Chromium, Firefox, WebKit | ~40 mins | GitHub Pages with trends |
+| **Manual Tests** | Workflow dispatch | Custom (via grep) | All browsers | Variable | Artifact |
+
+### Benefits
+
+- ⚡ **Fast Feedback**: Smoke tests provide results in ~5 minutes
+- 💰 **Cost Efficient**: Save ~40% CI minutes by running full cross-browser tests only on main
+- 🎯 **Quality Gate**: PRs must pass all tests before merge
+- 📊 **Trend Analysis**: Main branch maintains 10 runs of historical data on GitHub Pages
+
+## 🏗️ Project Structure
+
+```
+├── .github/workflows/
+│   └── playwright.yml          # CI/CD pipeline with 4 jobs
+├── fixtures/
+│   └── page-fixtures.ts        # Test fixtures for page objects
+├── pages/                      # Page Object Model classes
+│   ├── BasePage.ts            # Base page with common methods
+│   ├── HomePage.ts
+│   ├── LoginSignUpPage.ts
+│   ├── CartPage.ts
+│   ├── CheckoutPage.ts
+│   ├── PaymentPage.ts
+│   ├── ProductsPage.ts
+│   ├── ProductDetailPage.ts
+│   └── AccountDeletedPage.ts
+├── test-data/
+│   └── constants.ts           # Test data and constants
+├── tests/                     # Test specifications
+│   ├── login.spec.ts
+│   ├── signUp.spec.ts
+│   ├── cart.spec.ts
+│   ├── hybrid-cart.spec.ts
+│   ├── hybrid-checkout.spec.ts
+│   └── api.spec.ts
+├── utils/
+│   └── helpers.ts             # Utility functions
+└── playwright.config.ts       # Playwright configuration
+
+```
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js (LTS version)
+- npm or yarn
+
+### Installation
+
+```bash
+# Install dependencies
+npm ci
+
+# Install Playwright browsers
+npx playwright install --with-deps
+```
+
+### Running Tests Locally
+
+```bash
+# Run all tests
+npx playwright test
+
+# Run smoke tests only
+npx playwright test --grep @smoke
+
+# Run specific test file
+npx playwright test tests/login.spec.ts
+
+# Run tests by tag
+npx playwright test --grep @login
+npx playwright test --grep @cart
+
+# Run on specific browser
+npx playwright test --project=chromium
+npx playwright test --project=firefox
+npx playwright test --project=webkit
+
+# Run in UI mode (debugging)
+npx playwright test --ui
+
+# Run in headed mode
+npx playwright test --headed
+```
+
+### Generate Allure Reports Locally
+
+```bash
+# Run tests
+npx playwright test
+
+# Generate and open Allure report
+npm run test:allure
+
+# Or run specific test suites
+npm run test:allure:login
+npm run test:allure:cart
+npm run test:allure:checkout
+```
+
+## 🌳 Git Workflow
+
+### 1. Create Feature Branch
+
+```bash
+git checkout -b feature/your-feature-name
+```
+
+### 2. Make Changes and Push
+
+```bash
+git add .
+git commit -m "feat: your feature description"
+git push origin feature/your-feature-name
+```
+
+**Result**: Smoke tests run automatically (~5 mins)
+
+### 3. Create Pull Request
+
+```bash
+gh pr create --base main --title "Your PR title" --body "Description"
+```
+
+**Result**: 
+- Full test suite runs on Chromium
+- PR receives auto-comment with test results
+- Must pass before merge
+
+### 4. Merge to Main
+
+After PR approval, merge via GitHub UI or:
+
+```bash
+gh pr merge --merge
+```
+
+**Result**:
+- Full test suite runs on all browsers
+- Allure report updated on GitHub Pages with trends
+
+## 📊 Test Reports
+
+### GitHub Pages (Production)
+
+View the latest test results with historical trends:
+- **URL**: `https://<your-username>.github.io/<repository-name>/`
+- **Updated**: After each merge to `main`
+- **History**: Last 10 test runs
+
+### GitHub Actions Artifacts
+
+Download reports from Actions tab:
+- Playwright HTML reports
+- Allure reports
+- Raw test results
+
+## 🏷️ Test Tags
+
+Tests are organized with tags for selective execution:
+
+- `@smoke` - Critical path tests (login, signup, basic cart)
+- `@login` - Login functionality tests
+- `@signup` - Sign up functionality tests
+- `@cart` - Shopping cart tests
+- `@hybrid-cart` - Combined UI/API cart tests
+- `@hybrid-checkout` - Combined UI/API checkout tests
+
+## 📝 Best Practices
+
+### Page Object Model
+
+- Page objects contain locators and page-specific methods
+- No assertions in page objects (only in tests)
+- Use `test.step()` for methods with multiple actions
+- Inherit from `BasePage` for common functionality
+
+### Test Writing
+
+- One test = one scenario
+- Tests should be independent (parallelizable)
+- Use descriptive test names
+- Leverage fixtures for page object instantiation
+- Use constants from `test-data/constants.ts`
+
+### Locator Strategy (Priority Order)
+
+1. `getByTestId()` - if applicable
+2. `getByRole()` - Most reliable and accessible
+3. `getByText()` - For unique text content
+4. Semantic selectors with `:has-text()`
+5. Data attributes when available
+
+Avoid: `nth-child()`, complex CSS paths, brittle selectors
+
+## 🛠️ Configuration
+
+### Playwright Config (`playwright.config.ts`)
+
+- **Base URL**: https://www.automationexercise.com/
+- **Browsers**: Chromium, Firefox, WebKit
+- **Parallel Execution**: Enabled
+- **Retries**: 1 retry on CI
+- **Reporter**: HTML + Allure
+- **Traces**: On failure (CI), always (local)
+- **Videos**: Disabled on CI, enabled locally
+
+### CI/CD Config (`.github/workflows/playwright.yml`)
+
+- **Concurrency**: Prevents parallel deployments to Pages
+- **Permissions**: Read/write for contents, pages, and PR comments
+- **Artifacts**: Retained for 7-30 days depending on job type
+- **History Limit**: 10 runs for Allure trends
+
+## 📚 Additional Resources
+
+- [Playwright Documentation](https://playwright.dev/)
+- [Allure Report](https://allurereport.org/)
+- [Page Object Model Pattern](https://playwright.dev/docs/pom)
+- [Test Automation Best Practices](https://playwright.dev/docs/best-practices)
+
+## 🤝 Contributing
+
+1. Create a feature branch from `main`
+2. Make your changes
+3. Ensure all tests pass locally
+4. Push and create a Pull Request
+5. Wait for CI checks to pass
+6. Request review
+7. Merge after approval
+
+---
+
+**Happy Testing!** 🎭
+
