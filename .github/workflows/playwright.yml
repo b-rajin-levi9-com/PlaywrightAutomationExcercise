@@ -1,19 +1,14 @@
 name: Playwright Tests
 
 on:
-  # Trigger on push to feature branches and main
   push:
     branches: 
       - 'main'
       - 'feature/**'
       - 'bugfix/**'
       - 'fix/**'
-  
-  # Full tests on PR
   pull_request:
     branches: [ main ]
-  
-  # Manual trigger
   workflow_dispatch:
     inputs:
       test_grep:
@@ -27,18 +22,20 @@ permissions:
   id-token: write
   pull-requests: write
 
+# Global concurrency - per branch
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # Job 1: Smoke tests for feature branches (fast feedback)
-  smoke-tests:
-    if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+  test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     
     steps:
+      # ============================================
+      # COMMON STEPS (always run)
+      # ============================================
       - name: Checkout
         uses: actions/checkout@v4
       
@@ -50,44 +47,74 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
+      # ============================================
+      # CONDITIONAL: Install browsers
+      # ============================================
+      # Install only Chromium for feature branches and PRs
       - name: Install Playwright Browsers (Chromium only)
+        if: |
+          (github.event_name == 'push' && github.ref != 'refs/heads/main') ||
+          github.event_name == 'pull_request'
         run: npx playwright install --with-deps chromium
       
-      - name: Run Smoke Tests
+      # Install all browsers for main branch and manual runs
+      - name: Install Playwright Browsers (All browsers)
+        if: |
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          github.event_name == 'workflow_dispatch'
+        run: npx playwright install --with-deps
+      
+      # ============================================
+      # CONDITIONAL: Run tests
+      # ============================================
+      # Feature branches: Smoke tests only on Chromium
+      - name: Run Smoke Tests (Feature branches)
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
         run: npx playwright test --grep @smoke --project=chromium
       
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: smoke-test-results-${{ github.sha }}
-          path: playwright-report/
-          retention-days: 7
-
-  # Job 2: Full tests for Pull Requests (quality gate - Chromium only)
-  pr-tests:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Install Playwright Browsers (Chromium only)
-        run: npx playwright install --with-deps chromium
-      
-      - name: Run Full Test Suite (Chromium only)
+      # PRs: Full tests on Chromium only
+      - name: Run Full Test Suite (PRs - Chromium only)
+        if: github.event_name == 'pull_request'
         run: npx playwright test --project=chromium
       
+      # Main branch: Full tests on all browsers
+      - name: Run Full Test Suite (Main - All browsers)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npx playwright test
+      
+      # Manual: Custom tests with grep
+      - name: Run Tests (Manual - Custom)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ -n "${{ github.event.inputs.test_grep }}" ]; then
+            echo "Running tests with grep: ${{ github.event.inputs.test_grep }}"
+            npx playwright test --grep "${{ github.event.inputs.test_grep }}"
+          else
+            npx playwright test
+          fi
+      
+      # ============================================
+      # CONDITIONAL: Download history (only for main)
+      # ============================================
+      - name: Download previous Allure history
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        run: |
+          mkdir -p allure-results/history
+          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+          PAGES_URL="https://${{ github.repository_owner }}.github.io/${REPO_NAME}"
+          echo "Fetching history from: $PAGES_URL/history/"
+          
+          for f in history.json history-trend.json duration-trend.json categories-trend.json retry-trend.json; do
+            curl -f -s -L "${PAGES_URL}/history/$f" -o "allure-results/history/$f" || echo "Missing $f"
+          done
+          
+          echo "History files downloaded:"
+          ls -la allure-results/history/ || true
+      
+      # ============================================
+      # COMMON: Generate Allure Report (always)
+      # ============================================
       - name: Generate Allure Report
         if: always()
         env:
@@ -95,25 +122,97 @@ jobs:
         run: |
           npm install -g allure-commandline
           allure generate allure-results --clean -o allure-report
+          echo "Allure report generated"
       
-      - name: Upload Playwright Report
-        if: always()
+      # ============================================
+      # CONDITIONAL: Upload artifacts with proper retention
+      # ============================================
+      # Upload Playwright report - Main branch (30 days)
+      - name: Upload Playwright Report (Main)
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-main-${{ github.run_id }}
+          path: playwright-report/
+          retention-days: 30
+      
+      # Upload Playwright report - PR (14 days)
+      - name: Upload Playwright Report (PR)
+        if: always() && github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-pr-${{ github.event.pull_request.number }}
           path: playwright-report/
           retention-days: 14
       
-      - name: Upload Allure Report
-        if: always()
+      # Upload Playwright report - Feature branches (7 days)
+      - name: Upload Playwright Report (Feature)
+        if: always() && github.event_name == 'push' && github.ref != 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-feature-${{ github.run_id }}
+          path: playwright-report/
+          retention-days: 7
+      
+      # Upload Playwright report - Manual (14 days)
+      - name: Upload Playwright Report (Manual)
+        if: always() && github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-manual-${{ github.run_id }}
+          path: playwright-report/
+          retention-days: 14
+      
+      # Upload Allure report - Main branch (30 days)
+      - name: Upload Allure Report (Main)
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-main-${{ github.run_id }}
+          path: allure-report/
+          retention-days: 30
+      
+      # Upload Allure report - PR (14 days)
+      - name: Upload Allure Report (PR)
+        if: always() && github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: allure-report-pr-${{ github.event.pull_request.number }}
           path: allure-report/
           retention-days: 14
       
+      # Upload Allure report - Feature branches (7 days)
+      - name: Upload Allure Report (Feature)
+        if: always() && github.event_name == 'push' && github.ref != 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-feature-${{ github.run_id }}
+          path: allure-report/
+          retention-days: 7
+      
+      # Upload Allure report - Manual (14 days)
+      - name: Upload Allure Report (Manual)
+        if: always() && github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-manual-${{ github.run_id }}
+          path: allure-report/
+          retention-days: 14
+      
+      # Upload Allure results (only main)
+      - name: Upload Allure Results
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-main-${{ github.run_id }}
+          path: allure-results/
+          retention-days: 30
+      
+      # ============================================
+      # CONDITIONAL: PR Comment
+      # ============================================
       - name: Comment PR with test results
-        if: always()
+        if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
@@ -131,149 +230,21 @@ jobs:
               repo: context.repo.repo,
               body: body
             });
-
-  # Job 3: Full tests on all browsers + deploy for main branch (official results with trends)
-  main-tests-and-deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    
-    concurrency:
-      group: "pages"
-      cancel-in-progress: false
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
       
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Install Playwright Browsers (All browsers)
-        run: npx playwright install --with-deps
-      
-      - name: Run Full Test Suite (All browsers)
-        run: npx playwright test
-      
-      - name: Download previous Allure history (for trends)
-        if: always()
-        continue-on-error: true
-        run: |
-          mkdir -p allure-results/history
-          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
-          PAGES_URL="https://${{ github.repository_owner }}.github.io/${REPO_NAME}"
-          echo "Fetching history from: $PAGES_URL/history/"
-          
-          for f in history.json history-trend.json duration-trend.json categories-trend.json retry-trend.json; do
-            curl -f -s -L "${PAGES_URL}/history/$f" -o "allure-results/history/$f" || echo "Missing $f - ok for first run"
-          done
-          
-          echo "History files downloaded:"
-          ls -la allure-results/history/ || true
-      
-      - name: Generate Allure Report
-        if: always()
-        env:
-          ALLURE_RESULTS_LIMIT: 10
-        run: |
-          npm install -g allure-commandline
-          allure generate allure-results --clean -o allure-report
-          echo "Allure report generated with history"
-      
-      - name: Upload Playwright Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report-main
-          path: playwright-report/
-          retention-days: 30
-      
-      - name: Upload Allure Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-report-main
-          path: allure-report/
-          retention-days: 30
-      
-      - name: Upload Allure Results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-results-main
-          path: allure-results/
-          retention-days: 30
-      
+      # ============================================
+      # CONDITIONAL: Deploy to GitHub Pages (only main)
+      # ============================================
       - name: Setup Pages
-        if: always()
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v4
       
       - name: Upload Pages artifact
-        if: always()
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
           path: allure-report
       
       - name: Deploy to GitHub Pages
-        if: always()
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: deployment
         uses: actions/deploy-pages@v4
-
-  # Job 4: Manual test execution with custom filters
-  manual-tests:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
-      
-      - name: Run Tests with Filter
-        run: |
-          if [ -n "${{ github.event.inputs.test_grep }}" ]; then
-            echo "Running tests with grep: ${{ github.event.inputs.test_grep }}"
-            npx playwright test --grep "${{ github.event.inputs.test_grep }}"
-          else
-            npx playwright test
-          fi
-      
-      - name: Generate Allure Report
-        if: always()
-        env:
-          ALLURE_RESULTS_LIMIT: 10
-        run: |
-          npm install -g allure-commandline
-          allure generate allure-results --clean -o allure-report
-      
-      - name: Upload Playwright Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report-manual-${{ github.run_id }}
-          path: playwright-report/
-          retention-days: 14
-      
-      - name: Upload Allure Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-report-manual-${{ github.run_id }}
-          path: allure-report/
-          retention-days: 14
