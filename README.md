@@ -17,10 +17,10 @@ This project uses a **tiered testing strategy** with **intelligent caching** to 
 
 ### Performance Optimizations
 
-- 🚀 **npm Caching**: Dependencies cached automatically, saves ~20-30 seconds per run
-- 🎭 **Browser Caching**: Playwright browsers cached by version and type, saves ~60-90 seconds per run
-- ⚡ **Smart Cache Keys**: Separate caches for Chromium-only vs all-browsers scenarios
-- 📦 **Conditional Installation**: Only installs what's not cached
+- 🚀 **npm Caching**: Dependencies cached automatically on all branches, saves ~20-30 seconds per run
+- 🎭 **Browser Caching**: Playwright browsers cached on main branch only (all 3 browsers), saves ~60-90 seconds per run
+- ⚡ **Smart Strategy**: Feature branches install fresh Chromium (~30-40s) to avoid cache conflicts
+- 📦 **Predictable Performance**: Consistent setup times across different branches
 
 ### Benefits
 
@@ -190,19 +190,29 @@ The workflow uses intelligent caching to speed up test execution:
 - **Savings**: ~20-30 seconds per run
 
 ### Playwright Browsers Cache
-- **Cached by**: Playwright version + browser type
-- **Cache types**:
-  - `playwright-Linux-1.45.0-chromium-only` (Feature/PR runs)
-  - `playwright-Linux-1.45.0-all-browsers` (Main branch runs)
+- **Cached by**: Playwright version (main branch only)
+- **Cache key**: `playwright-Linux-1.45.0-all-browsers`
+- **Applies to**: Main branch and manual workflow runs only
+- **Feature/PR branches**: Install Chromium fresh every time (no cache)
 - **Cache location**: `~/.cache/ms-playwright`
 - **Invalidated when**: Playwright version changes
-- **Savings**: ~60-90 seconds per run
+- **Savings**: ~60-90 seconds per run (main branch only)
+- **Rationale**: Avoids cache key conflicts when branches are deleted and recreated
 
 ### Cache Behavior
+
+**Main Branch:**
 - **First run**: No cache, full installation (~150s setup time)
 - **Subsequent runs**: Cache restored (~60s setup time)
+
+**Feature Branches & PRs:**
+- **Every run**: Fresh Chromium installation (~70s setup time with npm cache)
+- **Why no browser cache**: Prevents cache conflicts when branches are deleted/recreated
+
+**General:**
 - **Cache expiration**: 7 days for unused caches
 - **Cache limit**: 10GB per repository
+- **npm cache**: Works on all branches, always beneficial
 
 ## 🏷️ Test Tags
 
@@ -258,9 +268,9 @@ Avoid: `nth-child()`, complex CSS paths, brittle selectors
 
 - **Architecture**: Single optimized job with conditional step execution
 - **Caching**: 
-  - npm dependencies cached via `setup-node` action
-  - Playwright browsers cached by version and browser type
-  - Cache keys differentiate between Chromium-only and all-browsers scenarios
+  - npm dependencies cached on all branches via `setup-node` action
+  - Playwright browsers cached on main branch only (avoids cache conflicts)
+  - Feature/PR branches install Chromium fresh every time
 - **Concurrency**: Per-branch concurrency with auto-cancellation of outdated runs
 - **Permissions**: Read/write for contents, pages, and PR comments
 - **Artifacts**: 
