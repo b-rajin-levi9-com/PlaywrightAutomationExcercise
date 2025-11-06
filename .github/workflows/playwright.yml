@@ -22,7 +22,6 @@ permissions:
   id-token: write
   pull-requests: write
 
-# Global concurrency - per branch
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -34,35 +33,65 @@ jobs:
     
     steps:
       # ============================================
-      # COMMON STEPS (always run)
+      # COMMON STEPS with CACHING
       # ============================================
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Setup Node
+      - name: Setup Node with npm cache
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
+          cache: 'npm'
       
       - name: Install dependencies
         run: npm ci
       
+      # Determine which browsers to install
+      - name: Set browser installation type
+        id: browser-type
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "type=all-browsers" >> $GITHUB_OUTPUT
+          else
+            echo "type=chromium-only" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(npm list @playwright/test --depth=0 --json | jq -r '.dependencies["@playwright/test"].version')" >> $GITHUB_OUTPUT
+      
+      # Cache Playwright browsers with browser-type in key
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-${{ steps.browser-type.outputs.type }}
+          restore-keys: |
+            playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-
+      
       # ============================================
-      # CONDITIONAL: Install browsers
+      # CONDITIONAL: Install browsers (only if not cached)
       # ============================================
       # Install only Chromium for feature branches and PRs
       - name: Install Playwright Browsers (Chromium only)
         if: |
-          (github.event_name == 'push' && github.ref != 'refs/heads/main') ||
-          github.event_name == 'pull_request'
+          steps.playwright-cache.outputs.cache-hit != 'true' &&
+          steps.browser-type.outputs.type == 'chromium-only'
         run: npx playwright install --with-deps chromium
       
       # Install all browsers for main branch and manual runs
       - name: Install Playwright Browsers (All browsers)
         if: |
-          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-          github.event_name == 'workflow_dispatch'
+          steps.playwright-cache.outputs.cache-hit != 'true' &&
+          steps.browser-type.outputs.type == 'all-browsers'
         run: npx playwright install --with-deps
+      
+      # Install system dependencies if browsers were cached
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps
       
       # ============================================
       # CONDITIONAL: Run tests
