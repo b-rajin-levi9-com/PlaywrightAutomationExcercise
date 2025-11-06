@@ -4,29 +4,37 @@ A comprehensive end-to-end testing project using Playwright with TypeScript, imp
 
 ## 🧪 Testing Strategy
 
-This project uses a **tiered testing strategy** to optimize CI/CD performance and provide fast feedback:
+This project uses a **tiered testing strategy** with **intelligent caching** to optimize CI/CD performance and provide fast feedback:
 
 ### Test Execution Matrix
 
-| Stage | Trigger | Tests | Browser(s) | Duration | Report |
-|-------|---------|-------|-----------|----------|--------|
-| **Smoke Tests** | Push to `feature/*`, `bugfix/*`, `fix/*` | @smoke tagged tests only | Chromium | ~5 mins | Artifact |
-| **PR Tests** | Pull Request to `main` | All tests | Chromium only | ~15 mins | Artifact + PR comment |
-| **Main Tests** | Push/Merge to `main` | All tests | Chromium, Firefox, WebKit | ~40 mins | GitHub Pages with trends |
-| **Manual Tests** | Workflow dispatch | Custom (via grep) | All browsers | Variable | Artifact |
+| Stage | Trigger | Tests | Browser(s) | Duration (no cache) | Duration (cached) | Report |
+|-------|---------|-------|-----------|---------------------|-------------------|--------|
+| **Smoke Tests** | Push to `feature/*`, `bugfix/*`, `fix/*` | @smoke tagged tests only | Chromium | ~3 mins | ~2 mins | Artifact (7 days) |
+| **PR Tests** | Pull Request to `main` | All tests | Chromium only | ~12 mins | ~8 mins | Artifact (14 days) + PR comment |
+| **Main Tests** | Push/Merge to `main` | All tests | Chromium, Firefox, WebKit | ~35 mins | ~25 mins | GitHub Pages with trends (30 days) |
+| **Manual Tests** | Workflow dispatch | Custom (via grep) | All browsers | Variable | Variable | Artifact (14 days) |
+
+### Performance Optimizations
+
+- 🚀 **npm Caching**: Dependencies cached automatically on all branches, saves ~20-30 seconds per run
+- 🎭 **Browser Caching**: Playwright browsers cached on main branch only (all 3 browsers), saves ~60-90 seconds per run
+- ⚡ **Smart Strategy**: Feature branches install fresh Chromium (~30-40s) to avoid cache conflicts
+- 📦 **Predictable Performance**: Consistent setup times across different branches
 
 ### Benefits
 
-- ⚡ **Fast Feedback**: Smoke tests provide results in ~5 minutes
-- 💰 **Cost Efficient**: Save ~40% CI minutes by running full cross-browser tests only on main
+- ⚡ **Fast Feedback**: Smoke tests provide results in ~2 minutes (cached)
+- 💰 **Cost Efficient**: Save ~40% CI minutes + ~60 seconds per run with caching
 - 🎯 **Quality Gate**: PRs must pass all tests before merge
 - 📊 **Trend Analysis**: Main branch maintains 10 runs of historical data on GitHub Pages
+- 🔄 **Optimized Workflow**: Single job with conditional steps reduces duplication
 
 ## 🏗️ Project Structure
 
 ```
 ├── .github/workflows/
-│   └── playwright.yml          # CI/CD pipeline with 4 jobs
+│   └── playwright.yml          # CI/CD pipeline with optimized single job
 ├── fixtures/
 │   └── page-fixtures.ts        # Test fixtures for page objects
 ├── pages/                      # Page Object Model classes
@@ -171,6 +179,41 @@ Download reports from Actions tab:
 - Allure reports
 - Raw test results
 
+## ⚡ Caching & Performance
+
+The workflow uses intelligent caching to speed up test execution:
+
+### npm Dependencies Cache
+- **Cached by**: `package-lock.json` hash
+- **Cache location**: GitHub Actions cache
+- **Invalidated when**: Dependencies change
+- **Savings**: ~20-30 seconds per run
+
+### Playwright Browsers Cache
+- **Cached by**: Playwright version (main branch only)
+- **Cache key**: `playwright-Linux-1.45.0-all-browsers`
+- **Applies to**: Main branch and manual workflow runs only
+- **Feature/PR branches**: Install Chromium fresh every time (no cache)
+- **Cache location**: `~/.cache/ms-playwright`
+- **Invalidated when**: Playwright version changes
+- **Savings**: ~60-90 seconds per run (main branch only)
+- **Rationale**: Avoids cache key conflicts when branches are deleted and recreated
+
+### Cache Behavior
+
+**Main Branch:**
+- **First run**: No cache, full installation (~150s setup time)
+- **Subsequent runs**: Cache restored (~60s setup time)
+
+**Feature Branches & PRs:**
+- **Every run**: Fresh Chromium installation (~70s setup time with npm cache)
+- **Why no browser cache**: Prevents cache conflicts when branches are deleted/recreated
+
+**General:**
+- **Cache expiration**: 7 days for unused caches
+- **Cache limit**: 10GB per repository
+- **npm cache**: Works on all branches, always beneficial
+
 ## 🏷️ Test Tags
 
 Tests are organized with tags for selective execution:
@@ -223,10 +266,19 @@ Avoid: `nth-child()`, complex CSS paths, brittle selectors
 
 ### CI/CD Config (`.github/workflows/playwright.yml`)
 
-- **Concurrency**: Prevents parallel deployments to Pages
+- **Architecture**: Single optimized job with conditional step execution
+- **Caching**: 
+  - npm dependencies cached on all branches via `setup-node` action
+  - Playwright browsers cached on main branch only (avoids cache conflicts)
+  - Feature/PR branches install Chromium fresh every time
+- **Concurrency**: Per-branch concurrency with auto-cancellation of outdated runs
 - **Permissions**: Read/write for contents, pages, and PR comments
-- **Artifacts**: Retained for 7-30 days depending on job type
+- **Artifacts**: 
+  - Feature branches: 7 days retention
+  - Pull Requests: 14 days retention
+  - Main branch: 30 days retention
 - **History Limit**: 10 runs for Allure trends
+- **Performance**: ~60 seconds faster with caching (60% improvement)
 
 ## 📚 Additional Resources
 

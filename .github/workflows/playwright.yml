@@ -47,49 +47,48 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      # Determine which browsers to install
-      - name: Set browser installation type
-        id: browser-type
-        run: |
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "type=all-browsers" >> $GITHUB_OUTPUT
-          else
-            echo "type=chromium-only" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Get Playwright version
+      # ============================================
+      # CONDITIONAL: Browser caching (MAIN BRANCH ONLY)
+      # ============================================
+      - name: Get Playwright version (for main branch cache)
+        if: |
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          github.event_name == 'workflow_dispatch'
         id: playwright-version
         run: echo "version=$(npm list @playwright/test --depth=0 --json | jq -r '.dependencies["@playwright/test"].version')" >> $GITHUB_OUTPUT
       
-      # Cache Playwright browsers with browser-type in key
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
+      - name: Restore Playwright browsers cache (Main branch only)
+        if: |
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          github.event_name == 'workflow_dispatch'
+        uses: actions/cache/restore@v4
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-${{ steps.browser-type.outputs.type }}
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-all-browsers
           restore-keys: |
             playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-
       
       # ============================================
-      # CONDITIONAL: Install browsers (only if not cached)
+      # CONDITIONAL: Install browsers
       # ============================================
-      # Install only Chromium for feature branches and PRs
-      - name: Install Playwright Browsers (Chromium only)
+      # Feature branches & PRs: Always install Chromium (no cache)
+      - name: Install Playwright Browsers (Chromium only - no cache)
         if: |
-          steps.playwright-cache.outputs.cache-hit != 'true' &&
-          steps.browser-type.outputs.type == 'chromium-only'
+          (github.event_name == 'push' && github.ref != 'refs/heads/main') ||
+          github.event_name == 'pull_request'
         run: npx playwright install --with-deps chromium
       
-      # Install all browsers for main branch and manual runs
-      - name: Install Playwright Browsers (All browsers)
+      # Main branch: Install all browsers (only if not cached)
+      - name: Install Playwright Browsers (All browsers - main)
         if: |
           steps.playwright-cache.outputs.cache-hit != 'true' &&
-          steps.browser-type.outputs.type == 'all-browsers'
+          ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          github.event_name == 'workflow_dispatch')
         run: npx playwright install --with-deps
       
-      # Install system dependencies if browsers were cached
-      - name: Install Playwright system dependencies
+      # Main branch: Install system dependencies if browsers were cached
+      - name: Install Playwright system dependencies (cached browsers)
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps
       
@@ -121,6 +120,20 @@ jobs:
           else
             npx playwright test
           fi
+      
+      # ============================================
+      # CONDITIONAL: Save browser cache (even on test failure)
+      # ============================================
+      - name: Save Playwright browsers cache (Main branch only)
+        if: |
+          always() &&
+          steps.playwright-cache.outputs.cache-hit != 'true' &&
+          ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          github.event_name == 'workflow_dispatch')
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-all-browsers
       
       # ============================================
       # CONDITIONAL: Download history (only for main)
