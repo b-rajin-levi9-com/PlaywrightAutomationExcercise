@@ -48,19 +48,13 @@ jobs:
         run: npm ci
       
       # ============================================
-      # CONDITIONAL: Browser caching (MAIN BRANCH ONLY)
+      # BROWSER CACHING: All branches can use main's cache
       # ============================================
-      - name: Get Playwright version (for main branch cache)
-        if: |
-          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-          github.event_name == 'workflow_dispatch'
+      - name: Get Playwright version
         id: playwright-version
         run: echo "version=$(npm list @playwright/test --depth=0 --json | jq -r '.dependencies["@playwright/test"].version')" >> $GITHUB_OUTPUT
       
-      - name: Restore Playwright browsers cache (Main branch only)
-        if: |
-          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-          github.event_name == 'workflow_dispatch'
+      - name: Restore Playwright browsers cache (from main)
         uses: actions/cache/restore@v4
         id: playwright-cache
         with:
@@ -72,11 +66,12 @@ jobs:
       # ============================================
       # CONDITIONAL: Install browsers
       # ============================================
-      # Feature branches & PRs: Always install Chromium (no cache)
-      - name: Install Playwright Browsers (Chromium only - no cache)
+      # Feature branches & PRs: Install Chromium only if not cached
+      - name: Install Playwright Browsers (Chromium only)
         if: |
-          (github.event_name == 'push' && github.ref != 'refs/heads/main') ||
-          github.event_name == 'pull_request'
+          steps.playwright-cache.outputs.cache-hit != 'true' &&
+          ((github.event_name == 'push' && github.ref != 'refs/heads/main') ||
+          github.event_name == 'pull_request')
         run: npx playwright install --with-deps chromium
       
       # Main branch: Install all browsers (only if not cached)
@@ -87,7 +82,7 @@ jobs:
           github.event_name == 'workflow_dispatch')
         run: npx playwright install --with-deps
       
-      # Main branch: Install system dependencies if browsers were cached
+      # Install system dependencies if browsers were cached
       - name: Install Playwright system dependencies (cached browsers)
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps
