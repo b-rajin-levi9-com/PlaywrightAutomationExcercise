@@ -59,7 +59,6 @@ test.describe('Hybrid API + UI Cart Tests', { tag: '@hybrid-cart' }, () => {
     // Navigate to cart and verify product
     await homePage.clickCartLink();
     await expect(await cartPage.getProductInCart(firstProduct.name)).toBeVisible();
-    console.log(await cartPage.getProductInCart(firstProduct.name));
 
     // Verify product price matches what we got from API
     const priceInCart = await cartPage.getProductPrice(firstProduct.name);
